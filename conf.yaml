@@ -1,0 +1,34 @@
+device : "cuda"
+image_size : [128, 128]
+mask_channel : 1  #  The channel of the mask
+channel : 3  # The channel of the image
+model_channels : 128
+num_resblocks : 4
+attention_resolutions: [2, 4, 8]
+dropout : 0
+channel_mult : [1, 2, 4, 8]
+conv_resample : 'True'
+use_checkpoint : 'False'
+use_fp16 : 'False'
+num_heads : 1
+num_head_channels : 64
+num_head_unsample : -1
+use_scale_shift_norm : 'False'
+resblock_updown : 'False'
+use_new_attention_order : 'False'
+train_batch_size : 32
+eval_batch_size : 128
+learning_rate : 0.0001
+loss : 'L2'  # Choice L1 loss or L2 loss
+ema : "False"
+ema_every : 100
+start_ema : 2000
+data : "../VGPhraseCut_v0"
+logdir : "./log2.0"
+num_workers : 10
+train_batch_size : 32
+eval_batch_size : 128
+epochs : 50
+num_train_timesteps : 1000
+num_eval_timesteps : 100
+gate : 0.5  # The gate of our mask
