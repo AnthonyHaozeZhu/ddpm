@@ -1,4 +1,4 @@
-device : "cuda"
+device : "cpu"
 image_size : [128, 128]
 channel : 3  # The channel of the image
 model_channels : 128

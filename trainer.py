@@ -23,10 +23,11 @@ from torch.utils.data import DataLoader
 
 import numpy as np
 from tqdm import tqdm
+import shutil
 
 
 class Trainer:
-    def __init__(self, config):
+    def __init__(self, config, config_path):
         self.device = config.device
         self.diffusion = GaussianDiffusion(config.num_train_timesteps)
         self.network = UNet(
@@ -67,6 +68,7 @@ class Trainer:
         if not os.path.exists(config.logdir):
             os.mkdir(config.logdir)
         self.logger, self.log_path = init_logger(config)
+        shutil.copyfile(config_path, os.path.join(self.log_path, "conf.yaml"))
 
     def save_model(self, name, EMA=False):
         if not EMA:
@@ -119,13 +121,12 @@ class Trainer:
                     + extract(to_torch(np.sqrt(1 - alphas)), time, z.shape) * z
             if not os.path.exists(os.path.join(self.log_path, "example")):
                 os.mkdir(os.path.join(self.log_path, "example"))
-                example_path = os.path.join(
-                    self.log_path,
-                    "example",
-                    "example_{}_index{}.png".format(self.num_eval_timesteps, epoch)
-                )
-                print(x_t.shape)
-                show_tensor_example(x_t, example_path)
+            example_path = os.path.join(
+                self.log_path,
+                "example",
+                "example_{}_index{}.png".format(self.num_eval_timesteps, epoch)
+            )
+            show_tensor_example(x_t, example_path)
 
     def main_step(self):
         self.logger.info("  Num Epochs = %d", self.epochs)

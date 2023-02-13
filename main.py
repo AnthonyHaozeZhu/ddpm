@@ -17,5 +17,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     config = load_config(args.config)
     print('Config loaded')
-    trainer = Trainer(config)
+    trainer = Trainer(config, args.config)
     trainer.main_step()
