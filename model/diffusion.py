@@ -40,11 +40,11 @@ class GaussianDiffusion(nn.Module):
         y_noisy = extract(self.gammas, t, y.shape) * y + extract(self.sqrt_one_minus_gammas, t, noise.shape) * noise
         return y_noisy, noise
 
-    def noise_prediction(self, denoise_fn, y_noisy, image, promote, t):
+    def noise_prediction(self, x, t, denoise_fn):
         """
         Use the NN to predict the noise added between y_{t-1} and y_t
         """
-        noise_pred = denoise_fn(image, y_noisy, promote, t)
+        noise_pred = denoise_fn(x, t)
         return noise_pred
 
 

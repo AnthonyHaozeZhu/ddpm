@@ -7,9 +7,8 @@
 """
 import logging
 import os
-import torch
-import torchvision
 import yaml
+import torchvision
 
 
 def init_logger(config):
@@ -48,23 +47,12 @@ def init_logger(config):
     return logger, log_path
 
 
-def iou_mask(m1, m2, ioubp=False):
-    assert m1.shape == m2.shape
-    i = torch.sum(torch.logical_and(m1, m2) > 0)
-    u = torch.sum(torch.logical_or(m1, m2) > 0)
-    if not ioubp:
-        if i == 0:
-            return 0
-        else:
-            return i * 1.0 / u
-
-
-def show_tensor_example(ground_truth, pred, image, temp, path):
-    mask = pred
-    pred = pred * image
-    ground_truth = ground_truth * image
-    batch_size = ground_truth.shape[0]
-    image_tensor = torchvision.utils.make_grid(torch.cat((ground_truth, pred, mask.repeat(1, 3, 1, 1), temp.repeat(1, 3, 1, 1)), dim=0), nrow=batch_size, padding=100)
+def show_tensor_example(image, path):
+    image_processed = image.cpu()  # .permute(0, 2, 3, 1)
+    image_processed = (image_processed + 1.0) * 127.5
+    batch_size = image.shape[0]
+    print(image_processed.shape)
+    image_tensor = torchvision.utils.make_grid(image_processed, nrow=batch_size, padding=100)
     torchvision.utils.save_image(image_tensor, path)
 
 

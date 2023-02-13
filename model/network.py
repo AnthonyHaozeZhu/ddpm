@@ -5,46 +5,7 @@ import torch
 import torch.nn as nn
 
 
-class ResidualDenseBlock(nn.Module):
-    """
-    A module which performs the base block for the gan.
-    """
-    def __init__(self, nf, gc=32, res_scale=0.2):
-        super(ResidualDenseBlock, self).__init__()
-        self.layer1 = nn.Sequential(nn.Conv2d(nf + 0 * gc, gc, 3, padding=1, bias=True), nn.LeakyReLU())
-        self.layer2 = nn.Sequential(nn.Conv2d(nf + 1 * gc, gc, 3, padding=1, bias=True), nn.LeakyReLU())
-        self.layer3 = nn.Sequential(nn.Conv2d(nf + 2 * gc, gc, 3, padding=1, bias=True), nn.LeakyReLU())
-        self.layer4 = nn.Sequential(nn.Conv2d(nf + 3 * gc, gc, 3, padding=1, bias=True), nn.LeakyReLU())
-        self.layer5 = nn.Sequential(nn.Conv2d(nf + 4 * gc, nf, 3, padding=1, bias=True), nn.LeakyReLU())
-        self.res_scale = res_scale
-
-    def forward(self, x):
-        layer1 = self.layer1(x)
-        layer2 = self.layer2(torch.cat((x, layer1), 1))
-        layer3 = self.layer3(torch.cat((x, layer1, layer2), 1))
-        layer4 = self.layer4(torch.cat((x, layer1, layer2, layer3), 1))
-        layer5 = self.layer5(torch.cat((x, layer1, layer2, layer3, layer4), 1))
-        return layer5.mul(self.res_scale) + x
-
-
-class ResidualInResidualDenseBlock(nn.Module):
-    """
-    The gan layer.
-    """
-    def __init__(self, nf, gc=32, res_scale=0.2):
-        super(ResidualInResidualDenseBlock, self).__init__()
-        self.layer1 = ResidualDenseBlock(nf, gc)
-        self.layer2 = ResidualDenseBlock(nf, gc)
-        self.layer3 = ResidualDenseBlock(nf, gc)
-        self.res_scale = res_scale
-
-    def forward(self, x):
-        out = self.layer1(x)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        return out.mul(self.res_scale) + x
-
-
+# Source: https://github.com/jakeoneijk/AI618_final/blob/65dc33be7780e7f713b67e6f43765817e51c5cb4/model/sr3_modules/unet.py
 class UNet(nn.Module):
     def __init__(
         self,
@@ -53,11 +14,11 @@ class UNet(nn.Module):
         inner_channel=32,
         norm_groups=32,
         channel_mults=(1, 2, 4, 8, 8),
-        attn_res=8,
+        attn_res=[8],
         res_blocks=3,
         dropout=0,
         with_noise_level_emb=True,
-        image_size=128
+        image_size=(128, 128)
     ):
         super().__init__()
 
@@ -79,7 +40,7 @@ class UNet(nn.Module):
         num_mults = len(channel_mults)
         pre_channel = inner_channel
         feat_channels = [pre_channel]
-        now_res = image_size
+        now_res = image_size[0]
         downs = [nn.Conv2d(in_channel, inner_channel,
                            kernel_size=3, padding=1)]
         for ind in range(num_mults):
@@ -106,15 +67,15 @@ class UNet(nn.Module):
         self.downs = nn.ModuleList(downs)
 
         self.mid = nn.ModuleList([
-            ResnetBlocWithAttn(pre_channel+norm_groups,
-                               pre_channel+norm_groups,
+            ResnetBlocWithAttn(pre_channel,
+                               pre_channel,
                                noise_level_emb_dim=noise_level_channel,
                                norm_groups=norm_groups,
                                dropout=dropout,
                                with_attn=True
                                ),
-            ResnetBlocWithAttn(pre_channel+norm_groups,
-                               pre_channel+norm_groups,
+            ResnetBlocWithAttn(pre_channel,
+                               pre_channel,
                                noise_level_emb_dim=noise_level_channel,
                                norm_groups=norm_groups,
                                dropout=dropout,
@@ -144,35 +105,11 @@ class UNet(nn.Module):
                 now_res = now_res*2
 
         self.ups = nn.ModuleList(ups)
-
         self.final_conv = Block(pre_channel, default(out_channel, in_channel), groups=norm_groups)
 
-        self.F_encoder = nn.Conv2d(
-            in_channels=out_channel,
-            out_channels=out_channel,
-            kernel_size=3,
-            padding=1)  # 处理生成的有噪声的mask特征的
-        self.G_encoder = ResidualInResidualDenseBlock(
-            nf=in_channel)  # 处理原图像特征的
-        self.clip_model, _ = clip.load(
-            "ViT-B/32")
-        self.text_layer = nn.Linear(512, 8*8*norm_groups)
-
-    def forward(self, y, x, promote, timesteps):
+    def forward(self, x, timesteps):
         t = self.noise_level_mlp(timesteps) if exists(
             self.noise_level_mlp) else None
-
-        image = self.G_encoder(y)
-        sample = self.F_encoder(x)
-
-        with torch.no_grad():
-            promote = promote.squeeze(1)
-            text_feature = self.clip_model.encode_text(promote)
-
-        if self.mask_channels == 3:
-            x = image + sample
-        else:
-            x = image + sample.repeat(1, 3, 1, 1)
 
         feats = []
         for layer in self.downs:
@@ -182,14 +119,11 @@ class UNet(nn.Module):
                 x = layer(x)
             feats.append(x)
 
-        text_feature = self.text_layer(text_feature.float()).reshape(text_feature.shape[0], self.norm_groups, 8, 8)
-        x = torch.cat((text_feature, x), dim=1)
         for layer in self.mid:
             if isinstance(layer, ResnetBlocWithAttn):
                 x = layer(x, t)
             else:
                 x = layer(x)
-        _, x = torch.tensor_split(x, (self.norm_groups, ), dim=1)
 
         for layer in self.ups:
             if isinstance(layer, ResnetBlocWithAttn):
@@ -257,8 +191,6 @@ class Downsample(nn.Module):
 
 
 # building block modules
-
-
 class Block(nn.Module):
     def __init__(self, dim, dim_out, groups=32, dropout=0):
         super().__init__()
