@@ -130,7 +130,9 @@ class Trainer:
     def main_step(self):
         self.logger.info("  Num Epochs = %d", self.epochs)
         self.logger.info("  Training Batch size = %d", self.train_batch_size)
-        self.logger.info("  Testing Batch size = %d", self.eval_batch_size)
+        self.logger.info("  Generating Batch size = %d", self.eval_batch_size)
+        self.logger.info("  Training Timesteps = %d", self.num_train_timesteps)
+        self.logger.info("  Generating Timesteps = %d", self.num_eval_timesteps)
         for epoch in range(self.epochs):
             self.train(epoch)
             self.val(epoch)
