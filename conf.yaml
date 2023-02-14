@@ -1,18 +1,10 @@
-device : "cuda"
+device : "cpu"
 image_size : [128, 128]
 channel : 3  # The channel of the image
-model_channels : 128
-num_resblocks : 4
-dropout : 0
-channel_mults : [1, 2, 4, 8]
-conv_resample : 'True'
-use_fp16 : 'False'
-num_heads : 1
-num_head_channels : 64
-num_head_unsample : -1
-use_scale_shift_norm : 'False'
-resblock_updown : 'False'
-use_new_attention_order : 'False'
+model_channels : 64
+num_blocks : 2  # the number of `UpDownBlocks` at each resolution
+ch_mults : (1, 2, 2, 4)  # The list of channel numbers at each resolution
+is_attn : (False, False, True, True)
 learning_rate : 0.0001
 loss : 'L2'  # Choice L1 loss or L2 loss
 data : "../LFWPeople"
@@ -23,7 +15,3 @@ eval_batch_size : 4
 epochs : 50
 num_train_timesteps : 1000
 num_eval_timesteps : 1000
-inner_channel : 32
-attn_res: [2, 4, 8]
-with_noise_level_emb : "True"
-norm_groups : 32

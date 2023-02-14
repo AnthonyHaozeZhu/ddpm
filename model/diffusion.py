@@ -62,7 +62,7 @@ class DenoiseDiffusion:
         # Sample
         return mean + (var**0.5) * eps
 
-    def sample(self, n_samples, n_steps, image_channels, image_size, run_background=False):
+    def sample(self, n_samples, n_steps, image_channels, image_size):
         """
         ### Sample images
         n_samples: The number of the samples to generate
@@ -74,10 +74,8 @@ class DenoiseDiffusion:
                 [n_samples, image_channels, *image_size], device=self.device
             )
 
-            range_bar = range(n_steps)
+            range_bar = tqdm(range(n_steps), desc="Generating")
 
-            # if not run_background:
-            #     range_bar = tqdm(range_bar)
             for t_ in range_bar:
                 t = n_steps - t_ - 1
                 x = self.p_sample(x, x.new_full((n_samples,), t, dtype=torch.long))

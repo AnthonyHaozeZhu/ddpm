@@ -349,7 +349,7 @@ class UNet(nn.Module):
             n_channels * 4,
         )
 
-        # #### Second half of U-Net - increasing resolution
+        # Second half of U-Net - increasing resolution
         up = []
         # Number of channels
         in_channels = out_channels
