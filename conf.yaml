@@ -1,4 +1,4 @@
-device : "cpu"
+device : "cuda"
 image_size : [128, 128]
 channel : 3  # The channel of the image
 model_channels : 128
@@ -13,18 +13,16 @@ num_head_unsample : -1
 use_scale_shift_norm : 'False'
 resblock_updown : 'False'
 use_new_attention_order : 'False'
-train_batch_size : 32
-eval_batch_size : 8
 learning_rate : 0.0001
 loss : 'L2'  # Choice L1 loss or L2 loss
 data : "../LFWPeople"
 logdir : "./log"
 num_workers : 10
-train_batch_size : 128
+train_batch_size : 64
 eval_batch_size : 4
 epochs : 50
 num_train_timesteps : 1000
-num_eval_timesteps : 100
+num_eval_timesteps : 1000
 inner_channel : 32
 attn_res: [2, 4, 8]
 with_noise_level_emb : "True"

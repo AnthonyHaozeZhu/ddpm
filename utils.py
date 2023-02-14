@@ -48,11 +48,10 @@ def init_logger(config):
 
 
 def show_tensor_example(image, path):
-    image_processed = image.cpu()  # .permute(0, 2, 3, 1)
-    image_processed = (image_processed + 1.0) * 127.5
+    image_processed = image.cpu().float()
+    image_processed = ((image_processed + 1.0) / 2).clip(0, 1)
     batch_size = image.shape[0]
-    print(image_processed.shape)
-    image_tensor = torchvision.utils.make_grid(image_processed, nrow=batch_size, padding=100)
+    image_tensor = torchvision.utils.make_grid(image_processed, nrow=batch_size)
     torchvision.utils.save_image(image_tensor, path)
 
 

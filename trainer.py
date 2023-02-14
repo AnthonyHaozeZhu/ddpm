@@ -7,10 +7,9 @@
 """
 
 import os
-from functools import partial
 
 from model.network import UNet
-from model.diffusion import GaussianDiffusion, extract
+from model.diffusion import DenoiseDiffusion
 from data import LFWPeople
 from utils import init_logger, show_tensor_example
 
@@ -29,19 +28,11 @@ import shutil
 class Trainer:
     def __init__(self, config, config_path):
         self.device = config.device
-        self.diffusion = GaussianDiffusion(config.num_train_timesteps)
+
         self.network = UNet(
-            in_channel=config.channel,
-            out_channel=config.channel,
-            inner_channel=config.inner_channel,
-            norm_groups=config.norm_groups,
-            channel_mults=config.channel_mults,
-            attn_res=config.attn_res,
-            res_blocks=config.num_resblocks,
-            dropout=config.dropout,
-            with_noise_level_emb=config.with_noise_level_emb,
-            image_size=config.image_size
             ).to(self.device)
+        print(UNet)
+        self.diffusion = DenoiseDiffusion(eps_model=self.network, n_steps=config.num_train_timesteps, device=self.device)
 
         self.epochs = config.epochs
         self.num_train_timesteps = config.num_train_timesteps
@@ -80,45 +71,21 @@ class Trainer:
         optimizer = optim.Adam(self.network.parameters(), lr=self.learning_rate)
         print('Starting Training')
         train_tq = tqdm(self.dataloader, desc="Training Epoch " + str(epoch))
+        self.network.train()
         for index, batch in enumerate(train_tq):
             self.network.train()
             optimizer.zero_grad()
             truth = batch[0]
-            t = torch.randint(0, self.num_train_timesteps, (truth.shape[0],)).long()
-            noisy_image, noise_ref = self.diffusion.noisy_image(t, truth)
-            noise_pred = self.diffusion.noise_prediction(
-                denoise_fn=self.network,
-                x=noisy_image.to(self.device),
-                t=t.to(self.device)
-            )
-            loss = self.loss(noise_ref.to(self.device), noise_pred)
+            loss = self.diffusion.loss(truth.to(self.device))
             loss.backward()
             optimizer.step()
             train_tq.set_postfix({"loss": "%.3g" % loss.item()})
 
     def val(self, epoch):
-        to_torch = partial(torch.tensor, dtype=torch.float32)
+        self.network.eval()
         with torch.no_grad():
             self.network.eval()
-            T = self.num_eval_timesteps
-            # alphas = np.linspace(1e-4, 0.09, T)
-            # gammas = np.cumprod(alphas, axis=0)
-            betas = np.linspace(1e-6, 0.01, T)
-            alphas = 1. - betas
-            gammas = np.cumprod(alphas, axis=0)
-            x_t = torch.randn((self.eval_batch_size, self.channel, self.image_size[0], self.image_size[1]))
-            tq_val = tqdm(range(T), desc="Generating "+str(epoch))
-            for t in tq_val:
-                if t == 0:
-                    z = torch.randn_like(x_t.float())
-                else:
-                    z = torch.zeros_like(x_t.float())
-                time = (torch.ones((x_t.shape[0],)) * t).long()
-                x_t = extract(to_torch(np.sqrt(1 / alphas)), time, x_t.shape) \
-                    * (
-                            x_t - (extract(to_torch((1 - alphas) / np.sqrt(1 - gammas)), time, x_t.shape)) * self.network(x_t.to(self.device), time.to(self.device)).detach().cpu()
-                    ) \
-                    + extract(to_torch(np.sqrt(1 - alphas)), time, z.shape) * z
+            sample = self.diffusion.sample(self.eval_batch_size, self.num_eval_timesteps, 3, self.image_size)
             if not os.path.exists(os.path.join(self.log_path, "example")):
                 os.mkdir(os.path.join(self.log_path, "example"))
             example_path = os.path.join(
@@ -126,7 +93,7 @@ class Trainer:
                 "example",
                 "example_{}_index{}.png".format(self.num_eval_timesteps, epoch)
             )
-            show_tensor_example(x_t, example_path)
+            show_tensor_example(sample, example_path)
 
     def main_step(self):
         self.logger.info("  Num Epochs = %d", self.epochs)

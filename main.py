@@ -6,7 +6,7 @@
 @Date ：2022/11/19 20:37
 """
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '6'
+os.environ["CUDA_VISIBLE_DEVICES"] = '5'
 import argparse
 from utils import load_config
 from trainer import Trainer
