@@ -3,8 +3,8 @@ image_size : [128, 128]
 channel : 3  # The channel of the image
 model_channels : 64
 num_blocks : 2  # the number of `UpDownBlocks` at each resolution
-ch_mults : (1, 2, 2, 4)  # The list of channel numbers at each resolution
-is_attn : (False, False, True, True)
+ch_mults : [1, 2, 2, 4]  # The list of channel numbers at each resolution
+is_attn : [False, False, True, True]
 learning_rate : 0.0001
 loss : 'L2'  # Choice L1 loss or L2 loss
 data : "../LFWPeople"

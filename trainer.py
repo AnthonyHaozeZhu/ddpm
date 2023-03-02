@@ -16,7 +16,6 @@ from utils import init_logger, show_tensor_example
 
 import torch
 import torch.optim as optim
-import torch.nn as nn
 
 from torch.utils.data import DataLoader
 
